@@ -9,15 +9,13 @@ import java.util.List;
 @Entity
 @Table(name = "teams")
 @Inheritance(strategy = InheritanceType.JOINED)
-@DiscriminatorColumn(name = "level")
 @Data
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @SuperBuilder
 public abstract class Team {
-
     @Id
     @GeneratedValue()
-    private int id;
+    private long id;
     private String name;
     private String city;
     private String state;

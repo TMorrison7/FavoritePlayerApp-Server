@@ -18,15 +18,19 @@ public abstract class Player {
 
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
-    private int id;
+    private long id;
 
     private String firstName;
     private String lastName;
     private LocalDate dateOfBirth;
     private String birthState;
     private String birthCity;
+    @ManyToOne
+    @JoinColumn(name = "team_id")
     private Team team;
     private String highSchool;
+    @ManyToOne
+    @JoinColumn(name = "college_id")
     private College college;
 
 }
