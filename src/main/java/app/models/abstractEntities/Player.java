@@ -5,6 +5,7 @@ import app.models.entities.College;
 import jakarta.persistence.*;
 import lombok.experimental.SuperBuilder;
 
+import javax.xml.transform.Source;
 import java.time.LocalDate;
 
 @Entity
@@ -20,7 +21,9 @@ public abstract class Player {
     @GeneratedValue(strategy = GenerationType.AUTO)
     private long id;
 
+    @Column(nullable = false)
     private String firstName;
+    @Column(nullable = false)
     private String lastName;
     private LocalDate dateOfBirth;
     private String birthState;
