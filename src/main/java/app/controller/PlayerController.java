@@ -1,7 +1,8 @@
 package app.controller;
 
 
-import app.dto.PlayerRequestDto;
+
+import app.dto.playerdto.request.PlayerCreateRequest;
 import app.models.abstractEntities.Player;
 import app.service.PlayerService;
 import jakarta.validation.Valid;
@@ -21,62 +22,28 @@ public class PlayerController {
 
     private PlayerService playerService;
 
-    @PostMapping
-    public ResponseEntity<Player> createPlayer(@Valid @RequestBody PlayerRequestDto playerDto){
-        Player player = playerService.createPlayer(playerDto);
+    @PostMapping("/create")
+    public ResponseEntity<Player> create(@Valid @RequestBody PlayerCreateRequest request){
+        Player player = playerService.create(request);
         return new ResponseEntity<>(player, HttpStatus.CREATED);
+    }
+    @PostMapping("/search")
+    @Transactional(isolation = Isolation.READ_COMMITTED)
+    public ResponseEntity<List<Player>> search(@RequestBody PlayerCreateRequest request){
+        List<Player> players = this.playerService.search(request);
+        return ResponseEntity.ok(players);
     }
     @GetMapping
     @Transactional(isolation = Isolation.READ_COMMITTED)
-    public ResponseEntity<List<Player>> getAllPlayers(){
+    public ResponseEntity<List<Player>> getAll(){
         List<Player> players = this.playerService.getAllPlayers();
         return ResponseEntity.ok(players);
     }
-
     @GetMapping("/{id}")
     @Transactional(isolation = Isolation.READ_COMMITTED)
-    public ResponseEntity<Player> getPlayerById(@PathVariable Long id){
-        Player player = this.playerService.getPlayerById(id);
+    public ResponseEntity<Player> getById(@PathVariable Long id){
+        Player player = playerService.getPlayerById(id);
         return ResponseEntity.ok(player);
     }
-
-    @GetMapping("/search/name")
-    @Transactional(isolation = Isolation.READ_COMMITTED)
-    public ResponseEntity<Player> getPlayerByFirstAndLastName(@RequestParam String firstName, @RequestParam String lastname){
-        Player player = this.playerService.getPlayerByFirstAndLastName(firstName, lastname);
-        return ResponseEntity.ok(player);
-    }
-    @GetMapping("/search/firstname")
-    @Transactional(isolation = Isolation.READ_COMMITTED)
-    public ResponseEntity<List<Player>> getPlayersByFirstName(@RequestParam String firstName){
-        List<Player> players = this.playerService.getPlayersByFirstName(firstName);
-        return ResponseEntity.ok(players);
-    }
-    @GetMapping("/search/lastname")
-    @Transactional(isolation = Isolation.READ_COMMITTED)
-    public ResponseEntity<List<Player>>getPlayersByLastName(@RequestParam String lastname){
-        List<Player> players = this.playerService.getPlayersByLastName(lastname);
-        return ResponseEntity.ok(players);
-    }
-    @GetMapping("/search/state")
-    @Transactional(isolation = Isolation.READ_COMMITTED)
-    public ResponseEntity<List<Player>> getPlayersByState(@RequestParam String state){
-        List<Player> players = this.playerService.getPlayersByState(state);
-        return ResponseEntity.ok(players);
-    }
-    @GetMapping("/search/city")
-    @Transactional(isolation = Isolation.READ_COMMITTED)
-    public ResponseEntity<List<Player>> getPlayersByCity(@RequestParam String city){
-        List<Player> players = this.playerService.getPlayersByCity(city);
-        return ResponseEntity.ok(players);
-    }
-    @GetMapping("/search/high-school")
-    @Transactional(isolation = Isolation.READ_COMMITTED)
-    public ResponseEntity<List<Player>> getPlayersByHighSchool(@RequestParam String highSchool){
-        List<Player> players = this.playerService.getPlayersByHighSchool(highSchool);
-        return ResponseEntity.ok(players);
-    }
-
-
 
 }

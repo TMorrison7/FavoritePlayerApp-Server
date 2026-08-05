@@ -5,20 +5,19 @@ import app.models.entities.College;
 import jakarta.persistence.*;
 import lombok.experimental.SuperBuilder;
 
-import javax.xml.transform.Source;
 import java.time.LocalDate;
 
 @Entity
 @Table(name = "players")
 @Inheritance(strategy = InheritanceType.JOINED)
-@DiscriminatorColumn(name = "sport")
+@DiscriminatorColumn(name = "sport", discriminatorType = DiscriminatorType.STRING)
 @Data
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @SuperBuilder
 public abstract class Player {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
+    @GeneratedValue(strategy = GenerationType.SEQUENCE)
     private long id;
 
     @Column(nullable = false)
@@ -35,5 +34,6 @@ public abstract class Player {
     @ManyToOne
     @JoinColumn(name = "college_id")
     private College college;
-
+    @Column(name = "sport", insertable = false, updatable = false)
+    private String sport;
 }

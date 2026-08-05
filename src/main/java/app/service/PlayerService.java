@@ -1,24 +1,24 @@
 package app.service;
 
-import app.dto.BasketballPlayerRequestDto;
-import app.dto.FootballPlayerRequestDto;
-import app.dto.PlayerRequestDto;
+
+import app.dto.playerdto.request.BasketballCreateRequest;
+import app.dto.playerdto.request.FootballCreateRequest;
+import app.dto.playerdto.request.PlayerCreateRequest;
 import app.exception.ResourceNotFoundException;
 import app.models.abstractEntities.Player;
 import app.models.entities.BasketballPlayer;
 import app.models.entities.FootballPlayer;
 import app.repositories.PlayerRepository;
+import com.fasterxml.jackson.annotation.JsonSubTypes;
+import com.fasterxml.jackson.annotation.JsonTypeName;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
 import jakarta.validation.Validator;
 import lombok.AllArgsConstructor;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-import org.springframework.util.CollectionUtils;
 
-
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 @Service
 @AllArgsConstructor
@@ -28,12 +28,17 @@ public class PlayerService {
     private final PlayerRepository playerRepository;
     private final Validator validator;
 
-    @Transactional
-    public Player createPlayer(PlayerRequestDto playerRequestDto){
+
+    public Player create(PlayerCreateRequest request){
 
         Player player;
 
-        if(playerRequestDto instanceof FootballPlayerRequestDto footballDto){
+        Set<ConstraintViolation<PlayerCreateRequest>> violations = validator.validate(request);
+        if(!violations.isEmpty()){
+            throw new ConstraintViolationException(violations);
+        }
+
+        if(request instanceof FootballCreateRequest footballDto){
             player = FootballPlayer.builder()
                     .firstName(footballDto.getFirstName())
                     .lastName(footballDto.getLastName())
@@ -44,7 +49,7 @@ public class PlayerService {
                     .highSchool(footballDto.getHighSchool())
                     .college(footballDto.getCollege())
                     .build();
-        } else if (playerRequestDto instanceof BasketballPlayerRequestDto basketballDto){
+        } else if (request instanceof BasketballCreateRequest basketballDto){
             player = BasketballPlayer.builder()
                     .firstName(basketballDto.getFirstName())
                     .lastName(basketballDto.getLastName())
@@ -59,13 +64,30 @@ public class PlayerService {
             throw new IllegalArgumentException("Unknown player type");
         }
 
-        Set<ConstraintViolation<Player>> violations = validator.validate(player);
-        if(!violations.isEmpty()){
-            throw new ConstraintViolationException(violations);
-        }
-
         return playerRepository.save(player);
     }
+
+    public List<Player> search(PlayerCreateRequest request) {
+        Map<String, Object> filters = new HashMap<>();
+        filters.put("firstName", request.getFirstName());
+        filters.put("lastName", request.getLastName());
+        filters.put("dateOfBirth", request.getDateOfBirth());
+        filters.put("birthState", request.getBirthState());
+        filters.put("birthCity", request.getBirthCity());
+        filters.put("team", request.getTeam());
+        filters.put("highSchool", request.getHighSchool());
+        filters.put("college", request.getCollege());
+        filters.put("sport", request.getClass().getAnnotation(JsonTypeName.class).value());
+
+        Specification<Player> spec = (root, query, cb) -> cb.and(
+                filters.entrySet().stream()
+                        .filter(entry -> entry.getValue() != null)
+                        .map(entry -> cb.equal(root.get(entry.getKey()), entry.getValue()))
+                        .toArray(jakarta.persistence.criteria.Predicate[]::new)
+        );
+        return playerRepository.findAll(spec);
+    }
+    
     public List<Player> getAllPlayers(){
         return playerRepository.findAll();
     }
@@ -74,62 +96,6 @@ public class PlayerService {
         return playerRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException(String.format("Player with ID: %d not found.", id)));
     }
-
-    public Player getPlayerByFirstAndLastName(String firstName, String lastName){
-        return playerRepository.findByFirstNameAndLastName(firstName, lastName)
-                .orElseThrow(() -> new ResourceNotFoundException(String.format("Player with name: %s %s not found.", firstName, lastName)));
-    }
-
-    public List<Player> getPlayersByFirstName(String firstName){
-        List<Player> players = playerRepository.findPlayersByFirstName(firstName);
-
-        if(CollectionUtils.isEmpty(players)){
-            throw new ResourceNotFoundException(String.format("Players with first name: %s not found.", firstName));
-        }
-        return players;
-    }
-
-    public List<Player> getPlayersByLastName(String lastName){
-        List<Player> players = playerRepository.findPlayersByLastName(lastName);
-
-        if(CollectionUtils.isEmpty(players)){
-            throw new ResourceNotFoundException(String.format("Players with last name: %s not found.", lastName));
-        }
-        return players;
-    }
-
-    public List<Player> getPlayersByState(String state){
-        List<Player> players = playerRepository.findPlayersByBirthState(state);
-
-        if(CollectionUtils.isEmpty(players)){
-            throw new ResourceNotFoundException(String.format("No players from state: %s have been found.", state));
-        }
-        return players;
-    }
-
-    public List<Player> getPlayersByCity(String city){
-        List<Player> players = playerRepository.findPlayersByBirthCity(city);
-
-        if(CollectionUtils.isEmpty(players)){
-            throw new ResourceNotFoundException(String.format("No players from city: %s have been found.", city));
-        }
-        return players;
-    }
-
-    public List<Player> getPlayersByHighSchool(String highSchool){
-        List<Player> players = playerRepository.findPlayersByHighSchool(highSchool);
-
-        if(CollectionUtils.isEmpty(players)){
-            throw new ResourceNotFoundException(String.format("No players from high school: %s not found.", highSchool));
-        }
-        return players;
-    }
-
-
-
-
-
-
 
 
 }
