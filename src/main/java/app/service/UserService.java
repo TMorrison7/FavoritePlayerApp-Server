@@ -1,6 +1,6 @@
 package app.service;
 
-import app.dto.RegisterRequest;
+import app.dto.userdto.RegisterRequest;
 import app.models.User;
 
 import app.repositories.UserRepository;

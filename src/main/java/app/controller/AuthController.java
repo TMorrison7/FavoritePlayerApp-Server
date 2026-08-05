@@ -1,7 +1,7 @@
 package app.controller;
 
-import app.dto.LoginRequest;
-import app.dto.RegisterRequest;
+import app.dto.userdto.LoginRequest;
+import app.dto.userdto.RegisterRequest;
 import app.models.User;
 import app.repositories.UserRepository;
 import app.service.UserService;

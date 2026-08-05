@@ -14,6 +14,7 @@ import java.util.List;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @SuperBuilder
 public abstract class Team {
+
     @Id
     @GeneratedValue()
     private long id;
