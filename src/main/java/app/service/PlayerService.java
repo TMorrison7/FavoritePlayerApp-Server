@@ -1,24 +1,30 @@
 package app.service;
 
 
-import app.dto.playerdto.request.BasketballCreateRequest;
-import app.dto.playerdto.request.FootballCreateRequest;
-import app.dto.playerdto.request.PlayerCreateRequest;
+import app.dto.playerdto.request.BasketballRequest;
+import app.dto.playerdto.request.FootballRequest;
+import app.dto.playerdto.request.PlayerRequest;
 import app.exception.ResourceNotFoundException;
 import app.models.abstractEntities.Player;
 import app.models.entities.BasketballPlayer;
 import app.models.entities.FootballPlayer;
 import app.repositories.PlayerRepository;
-import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeName;
+import com.fasterxml.jackson.databind.JsonMappingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
 import jakarta.validation.Validator;
 import lombok.AllArgsConstructor;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
-import java.util.*;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 @Service
 @AllArgsConstructor
@@ -27,18 +33,20 @@ public class PlayerService {
 
     private final PlayerRepository playerRepository;
     private final Validator validator;
+    private final ObjectMapper mapper = new ObjectMapper();
 
 
-    public Player create(PlayerCreateRequest request){
+
+    public Player create(PlayerRequest request){
 
         Player player;
 
-        Set<ConstraintViolation<PlayerCreateRequest>> violations = validator.validate(request);
+        Set<ConstraintViolation<PlayerRequest>> violations = validator.validate(request);
         if(!violations.isEmpty()){
             throw new ConstraintViolationException(violations);
         }
 
-        if(request instanceof FootballCreateRequest footballDto){
+        if(request instanceof FootballRequest footballDto){
             player = FootballPlayer.builder()
                     .firstName(footballDto.getFirstName())
                     .lastName(footballDto.getLastName())
@@ -48,8 +56,9 @@ public class PlayerService {
                     .team(footballDto.getTeam())
                     .highSchool(footballDto.getHighSchool())
                     .college(footballDto.getCollege())
+                    .sport(footballDto.getClass().getAnnotation(JsonTypeName.class).value())
                     .build();
-        } else if (request instanceof BasketballCreateRequest basketballDto){
+        } else if (request instanceof BasketballRequest basketballDto){
             player = BasketballPlayer.builder()
                     .firstName(basketballDto.getFirstName())
                     .lastName(basketballDto.getLastName())
@@ -59,6 +68,7 @@ public class PlayerService {
                     .team(basketballDto.getTeam())
                     .highSchool(basketballDto.getHighSchool())
                     .college(basketballDto.getCollege())
+                    .sport(basketballDto.getClass().getAnnotation(JsonTypeName.class).value())
                     .build();
         } else {
             throw new IllegalArgumentException("Unknown player type");
@@ -67,7 +77,7 @@ public class PlayerService {
         return playerRepository.save(player);
     }
 
-    public List<Player> search(PlayerCreateRequest request) {
+    public List<Player> search(PlayerRequest request) {
         Map<String, Object> filters = new HashMap<>();
         filters.put("firstName", request.getFirstName());
         filters.put("lastName", request.getLastName());
@@ -92,10 +102,39 @@ public class PlayerService {
         return playerRepository.findAll();
     }
 
-    public Player getPlayerById(long id){
+    public Player getPlayerById(Long id){
         return playerRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException(String.format("Player with ID: %d not found.", id)));
     }
 
+    public Player updateFull(Long id, PlayerRequest request){
 
+        Player existingPlayer = playerRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Player not found"));
+
+        try {
+            // 2. Jackson automatically merges the request fields directly into the correct concrete class
+            return playerRepository.save(mapper.updateValue(existingPlayer, request));
+        } catch (JsonMappingException e) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid update data", e);
+        }
+    }
+
+    public Player updatePartial(Long id, PlayerRequest request){
+        Player currentPlayer = playerRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Player not found"));
+
+        try {
+            return playerRepository.save(mapper.updateValue(currentPlayer, request));
+        } catch (Exception e) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Update failed", e);
+        }
+    }
+    public void delete(Long id){
+        if(!playerRepository.existsById(id)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Request not found");
+        }
+        playerRepository.deleteById(id);
+
+    }
 }

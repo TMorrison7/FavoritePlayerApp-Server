@@ -16,7 +16,7 @@ import java.util.List;
 public abstract class Team {
 
     @Id
-    @GeneratedValue()
+    @GeneratedValue(strategy = GenerationType.SEQUENCE)
     private long id;
     @Column(nullable = false)
     private String name;

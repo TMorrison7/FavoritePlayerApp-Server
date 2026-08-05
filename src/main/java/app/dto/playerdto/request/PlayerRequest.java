@@ -7,7 +7,6 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
-import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 
 import java.time.LocalDate;
@@ -16,28 +15,29 @@ import java.time.LocalDate;
 @JsonTypeInfo(
         use = JsonTypeInfo.Id.NAME,
         include = JsonTypeInfo.As.PROPERTY,
-        property = "sport"
+        property = "sport",
+        visible = true
 )
 @JsonSubTypes({
-        @JsonSubTypes.Type(value = BasketballCreateRequest.class, name = "BASKETBALL"),
-        @JsonSubTypes.Type(value = FootballCreateRequest.class, name = "FOOTBALL")
+        @JsonSubTypes.Type(value = BasketballRequest.class, name = "BASKETBALL"),
+        @JsonSubTypes.Type(value = FootballRequest.class, name = "FOOTBALL")
 })
 
 @Data
 @RequiredArgsConstructor // Generates the constructor for final fields
 @EqualsAndHashCode // Essential for comparing immutable objects safely
-public sealed abstract class PlayerCreateRequest permits BasketballCreateRequest, FootballCreateRequest {
-
+public sealed abstract class PlayerRequest permits BasketballRequest, FootballRequest {
+    private Long id;
     @NotBlank(message = "First name is required")
-    private final String firstName;
+    private String firstName;
     @NotBlank(message = "Last name is required")
-    private final String lastName;
-    private final LocalDate dateOfBirth;
-    private final String birthState;
-    private final String birthCity;
-    private final Team team;
-    private final String highSchool;
-    private final College college;
-    private final String sport;
+    private String lastName;
+    private LocalDate dateOfBirth;
+    private String birthState;
+    private String birthCity;
+    private Team team;
+    private String highSchool;
+    private College college;
+    private String sport;
 }
 

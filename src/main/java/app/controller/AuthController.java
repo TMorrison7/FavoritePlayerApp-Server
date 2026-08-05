@@ -20,7 +20,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.time.Instant;
 
 @RestController
-@RequestMapping("/api/auth")
+@RequestMapping("/")
 @AllArgsConstructor
 public class AuthController {
 
@@ -30,7 +30,7 @@ public class AuthController {
     private final JwtEncoder jwtEncoder;
 
 
-    @PostMapping("/register")
+    @PostMapping("register")
     public ResponseEntity<String> registerUser(@RequestBody RegisterRequest request) {
         if (userService.existsByUsername(request.username())) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Username already taken.");
@@ -39,7 +39,7 @@ public class AuthController {
         return ResponseEntity.status(HttpStatus.CREATED).body("User registered successfully!");
     }
 
-    @PostMapping("/login")
+    @PostMapping("login")
     public ResponseEntity<String> loginUser(@RequestBody LoginRequest request) {
         User user = userRepository.findByUsername(request.username())
                 .orElse(null);
