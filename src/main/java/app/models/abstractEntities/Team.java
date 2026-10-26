@@ -22,6 +22,9 @@ public abstract class Team {
     private String name;
     private String city;
     private String state;
+    @ElementCollection
+    @CollectionTable(name = "team_colors", joinColumns = @JoinColumn(name = "team_id"))
+    @Column(name = "color")
     private List<String> colors;
     private String division;
     private String level;
