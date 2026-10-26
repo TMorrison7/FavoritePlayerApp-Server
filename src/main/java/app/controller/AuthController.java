@@ -12,6 +12,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.jwt.JwtClaimsSet;
 import org.springframework.security.oauth2.jwt.JwtEncoder;
 import org.springframework.security.oauth2.jwt.JwtEncoderParameters;
+import org.springframework.security.oauth2.jwt.JwsHeader;
+import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -60,7 +62,8 @@ public class AuthController {
                 .claim("role", assignedRole)
                 .build();
 
-        String token = this.jwtEncoder.encode(JwtEncoderParameters.from(claims)).getTokenValue();
+        JwsHeader header = JwsHeader.with(MacAlgorithm.HS256).build();
+        String token = this.jwtEncoder.encode(JwtEncoderParameters.from(header, claims)).getTokenValue();
         return ResponseEntity.ok(token);
     }
 }
