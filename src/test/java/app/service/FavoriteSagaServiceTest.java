@@ -1,162 +1,119 @@
 package app.service;
 
+import app.dto.userdto.FavoriteSagaResponse;
+import app.dto.userdto.FavoriteSagaStartedEvent;
 import app.exception.ResourceNotFoundException;
+import app.models.FavoriteSaga;
+import app.models.FavoriteSagaStatus;
+import app.models.OutboxEvent;
 import app.models.abstractEntities.Player;
+import app.repositories.FavoriteSagaRepository;
+import app.repositories.OutboxEventRepository;
 import app.repositories.PlayerRepository;
 import app.repositories.UserRepository;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.InOrder;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 class FavoriteSagaServiceTest {
 
-    private FavoriteService favoriteService;
+    private FavoriteSagaRepository sagaRepository;
+    private OutboxEventRepository outboxRepository;
     private UserRepository userRepository;
     private PlayerRepository playerRepository;
+    private ObjectMapper objectMapper;
     private FavoriteSagaService sagaService;
 
     @BeforeEach
     void setUp() {
-        favoriteService = mock(FavoriteService.class);
+        sagaRepository = mock(FavoriteSagaRepository.class);
+        outboxRepository = mock(OutboxEventRepository.class);
         userRepository = mock(UserRepository.class);
         playerRepository = mock(PlayerRepository.class);
-        sagaService = new FavoriteSagaService(favoriteService, userRepository, playerRepository);
+        objectMapper = new ObjectMapper();
+        sagaService = new FavoriteSagaService(
+                sagaRepository, outboxRepository, userRepository, playerRepository, objectMapper);
+        ReflectionTestUtils.setField(sagaService, "favoriteSagaTopic", "favorite-saga-events");
     }
 
     @Test
-    void addsUniquePlayersAndReturnsFavorites() {
-        Player first = player(10L);
-        Player second = player(20L);
-        List<Player> favorites = List.of(first, second);
-        when(userRepository.existsByUsername("alice")).thenReturn(true);
-        when(playerRepository.findAllById(List.of(10L, 20L))).thenReturn(List.of(first, second));
-        when(favoriteService.addFavorite("alice", 10L)).thenReturn(true);
-        when(favoriteService.addFavorite("alice", 20L)).thenReturn(true);
-        when(favoriteService.getFavorites("alice")).thenReturn(favorites);
-
-        assertSame(favorites, sagaService.addFavorites("alice", List.of(10L, 10L, 20L)));
-
-        verify(playerRepository).findAllById(List.of(10L, 20L));
-        verify(favoriteService).addFavorite("alice", 10L);
-        verify(favoriteService).addFavorite("alice", 20L);
-        verify(favoriteService).getFavorites("alice");
-        verify(favoriteService, never()).removeFavorite(anyString(), anyLong());
-    }
-
-    @Test
-    void doesNotClaimOrCompensateFavoritesThatAlreadyExisted() {
+    void createsSagaAndOutboxEventForValidatedUniquePlayerIds() throws Exception {
         Player first = player(10L);
         Player second = player(20L);
         when(userRepository.existsByUsername("alice")).thenReturn(true);
         when(playerRepository.findAllById(List.of(10L, 20L))).thenReturn(List.of(first, second));
-        when(favoriteService.addFavorite("alice", 10L)).thenReturn(false);
-        when(favoriteService.addFavorite("alice", 20L)).thenThrow(new IllegalStateException("failed"));
+        when(sagaRepository.save(any(FavoriteSaga.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(outboxRepository.save(any(OutboxEvent.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        assertThrows(IllegalStateException.class,
-                () -> sagaService.addFavorites("alice", List.of(10L, 20L)));
+        FavoriteSagaResponse response = sagaService.start("alice", List.of(10L, 10L, 20L));
 
-        verify(favoriteService, never()).removeFavorite("alice", 10L);
+        assertEquals(FavoriteSagaStatus.PENDING, response.status());
+        assertNull(response.failureMessage());
+        var eventCaptor = org.mockito.ArgumentCaptor.forClass(OutboxEvent.class);
+        verify(outboxRepository).save(eventCaptor.capture());
+        OutboxEvent event = eventCaptor.getValue();
+        assertEquals("favorite-saga-events", event.getTopic());
+        assertEquals(response.sagaId().toString(), event.getMessageKey());
+        assertEquals(new FavoriteSagaStartedEvent(response.sagaId()),
+                objectMapper.readValue(event.getPayload(), FavoriteSagaStartedEvent.class));
+        verify(sagaRepository).save(argThat(saga ->
+                saga.getPlayerIds().equals(List.of(10L, 20L))
+                        && saga.getUsername().equals("alice")));
     }
 
     @Test
-    void rejectsUnknownUserBeforeLookingUpPlayers() {
+    void rejectsUnknownUserWithoutCreatingSagaOrOutboxEvent() {
         when(userRepository.existsByUsername("missing")).thenReturn(false);
 
         assertThrows(ResourceNotFoundException.class,
-                () -> sagaService.addFavorites("missing", List.of(10L)));
+                () -> sagaService.start("missing", List.of(10L)));
 
-        verifyNoInteractions(playerRepository, favoriteService);
+        verifyNoInteractions(playerRepository, sagaRepository, outboxRepository);
     }
 
     @Test
-    void rejectsUnknownPlayerBeforeStartingSaga() {
+    void rejectsUnknownPlayerBeforePersistingSagaOrOutboxEvent() {
         Player knownPlayer = player(10L);
         when(userRepository.existsByUsername("alice")).thenReturn(true);
         when(playerRepository.findAllById(List.of(10L, 20L))).thenReturn(List.of(knownPlayer));
 
-        ResourceNotFoundException exception = assertThrows(ResourceNotFoundException.class,
-                () -> sagaService.addFavorites("alice", List.of(10L, 20L)));
+        assertThrows(ResourceNotFoundException.class,
+                () -> sagaService.start("alice", List.of(10L, 20L)));
 
-        assertEquals("Player with ID: 20 not found.", exception.getMessage());
-        verifyNoInteractions(favoriteService);
+        verifyNoInteractions(sagaRepository, outboxRepository);
     }
 
     @Test
-    void compensatesCompletedStepsInReverseOrderWhenALaterStepFails() {
-        preparePlayers(10L, 20L, 30L);
-        when(favoriteService.addFavorite("alice", 10L)).thenReturn(true);
-        when(favoriteService.addFavorite("alice", 20L)).thenReturn(true);
-        IllegalStateException failure = new IllegalStateException("third step failed");
-        when(favoriteService.addFavorite("alice", 30L)).thenThrow(failure);
+    void returnsSagaStatusOnlyToItsOwningUser() {
+        UUID id = UUID.randomUUID();
+        FavoriteSaga saga = new FavoriteSaga("alice", List.of(10L));
+        saga.setId(id.toString());
+        saga.setStatus(FavoriteSagaStatus.COMPENSATING);
+        saga.setFailureMessage("Player step failed");
+        when(sagaRepository.findByIdAndUsername(id.toString(), "alice")).thenReturn(Optional.of(saga));
 
-        assertSame(failure, assertThrows(IllegalStateException.class,
-                () -> sagaService.addFavorites("alice", List.of(10L, 20L, 30L))));
+        FavoriteSagaResponse response = sagaService.getStatus("alice", id);
 
-        InOrder calls = inOrder(favoriteService);
-        calls.verify(favoriteService).addFavorite("alice", 10L);
-        calls.verify(favoriteService).addFavorite("alice", 20L);
-        calls.verify(favoriteService).addFavorite("alice", 30L);
-        calls.verify(favoriteService).removeFavorite("alice", 20L);
-        calls.verify(favoriteService).removeFavorite("alice", 10L);
-        verify(favoriteService, never()).removeFavorite("alice", 30L);
+        assertEquals(id, response.sagaId());
+        assertEquals(FavoriteSagaStatus.COMPENSATING, response.status());
+        assertEquals("Player step failed", response.failureMessage());
     }
 
     @Test
-    void preservesOriginalFailureAndContinuesCompensatingWhenCompensationFails() {
-        preparePlayers(10L, 20L, 30L);
-        when(favoriteService.addFavorite("alice", 10L)).thenReturn(true);
-        when(favoriteService.addFavorite("alice", 20L)).thenReturn(true);
-        IllegalStateException failure = new IllegalStateException("third step failed");
-        when(favoriteService.addFavorite("alice", 30L)).thenThrow(failure);
-        IllegalStateException compensationFailure = new IllegalStateException("rollback failed");
-        doThrow(compensationFailure).when(favoriteService).removeFavorite("alice", 20L);
+    void doesNotExposeSagaStatusToAnotherUser() {
+        UUID id = UUID.randomUUID();
+        when(sagaRepository.findByIdAndUsername(id.toString(), "mallory")).thenReturn(Optional.empty());
 
-        assertSame(failure, assertThrows(IllegalStateException.class,
-                () -> sagaService.addFavorites("alice", List.of(10L, 20L, 30L))));
-
-        assertArrayEquals(new Throwable[]{compensationFailure}, failure.getSuppressed());
-        verify(favoriteService).removeFavorite("alice", 20L);
-        verify(favoriteService).removeFavorite("alice", 10L);
-    }
-
-    @Test
-    void compensatesAddedFavoritesWhenReadingFinalFavoriteListFails() {
-        preparePlayers(10L, 20L);
-        when(favoriteService.addFavorite("alice", 10L)).thenReturn(true);
-        when(favoriteService.addFavorite("alice", 20L)).thenReturn(true);
-        IllegalStateException failure = new IllegalStateException("favorite read failed");
-        when(favoriteService.getFavorites("alice")).thenThrow(failure);
-
-        assertSame(failure, assertThrows(IllegalStateException.class,
-                () -> sagaService.addFavorites("alice", List.of(10L, 20L))));
-
-        InOrder calls = inOrder(favoriteService);
-        calls.verify(favoriteService).removeFavorite("alice", 20L);
-        calls.verify(favoriteService).removeFavorite("alice", 10L);
-    }
-
-    @Test
-    void returnsCurrentFavoritesForAnEmptyBatch() {
-        List<Player> favorites = List.of(player(50L));
-        when(userRepository.existsByUsername("alice")).thenReturn(true);
-        when(playerRepository.findAllById(List.of())).thenReturn(List.of());
-        when(favoriteService.getFavorites("alice")).thenReturn(favorites);
-
-        assertSame(favorites, sagaService.addFavorites("alice", List.of()));
-
-        verify(favoriteService, never()).addFavorite(anyString(), anyLong());
-        verify(favoriteService, never()).removeFavorite(anyString(), anyLong());
-    }
-
-    private void preparePlayers(Long... ids) {
-        when(userRepository.existsByUsername("alice")).thenReturn(true);
-        List<Long> playerIds = List.of(ids);
-        when(playerRepository.findAllById(playerIds)).thenReturn(playerIds.stream().map(this::player).toList());
+        assertThrows(ResourceNotFoundException.class, () -> sagaService.getStatus("mallory", id));
     }
 
     private Player player(Long id) {

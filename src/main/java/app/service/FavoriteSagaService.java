@@ -1,67 +1,80 @@
 package app.service;
 
+import app.dto.userdto.FavoriteSagaResponse;
+import app.dto.userdto.FavoriteSagaStartedEvent;
 import app.exception.ResourceNotFoundException;
+import app.models.FavoriteSaga;
+import app.models.OutboxEvent;
 import app.models.abstractEntities.Player;
+import app.repositories.FavoriteSagaRepository;
+import app.repositories.OutboxEventRepository;
 import app.repositories.PlayerRepository;
 import app.repositories.UserRepository;
-import lombok.AllArgsConstructor;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
-@AllArgsConstructor
+@RequiredArgsConstructor
 public class FavoriteSagaService {
 
-    private static final Logger logger = LoggerFactory.getLogger(FavoriteSagaService.class);
-
-    private final FavoriteService favoriteService;
+    private final FavoriteSagaRepository sagaRepository;
+    private final OutboxEventRepository outboxEventRepository;
     private final UserRepository userRepository;
     private final PlayerRepository playerRepository;
+    private final ObjectMapper objectMapper;
 
-    public List<Player> addFavorites(String username, List<Long> playerIds) {
+    @Value("${app.kafka.favorite-saga-topic}")
+    private String favoriteSagaTopic;
+
+    @Transactional
+    public FavoriteSagaResponse start(String username, List<Long> requestedPlayerIds) {
         if (!userRepository.existsByUsername(username)) {
             throw new ResourceNotFoundException("User not found: " + username);
         }
 
-        List<Long> uniquePlayerIds = playerIds.stream().distinct().toList();
-        Set<Long> existingPlayerIds = playerRepository.findAllById(uniquePlayerIds).stream()
+        List<Long> playerIds = requestedPlayerIds.stream().distinct().toList();
+        Set<Long> existingPlayerIds = playerRepository.findAllById(playerIds).stream()
                 .map(Player::getId)
                 .collect(Collectors.toSet());
-        for (Long playerId : uniquePlayerIds) {
+        for (Long playerId : playerIds) {
             if (!existingPlayerIds.contains(playerId)) {
                 throw new ResourceNotFoundException(String.format("Player with ID: %d not found.", playerId));
             }
         }
 
-        List<Long> completedSteps = new ArrayList<>();
+        FavoriteSaga saga = sagaRepository.save(new FavoriteSaga(username, playerIds));
         try {
-            for (Long playerId : uniquePlayerIds) {
-                if (favoriteService.addFavorite(username, playerId)) {
-                    completedSteps.add(playerId);
-                }
-            }
-            return favoriteService.getFavorites(username);
-        } catch (RuntimeException failure) {
-            compensate(username, completedSteps, failure);
-            throw failure;
+            String payload = objectMapper.writeValueAsString(
+                    new FavoriteSagaStartedEvent(UUID.fromString(saga.getId())));
+            outboxEventRepository.save(new OutboxEvent(favoriteSagaTopic, saga.getId(), payload));
+        } catch (JsonProcessingException exception) {
+            throw new IllegalStateException("Could not serialize favorite saga event", exception);
         }
+
+        return toResponse(saga);
     }
 
-    private void compensate(String username, List<Long> completedSteps, RuntimeException failure) {
-        for (int i = completedSteps.size() - 1; i >= 0; i--) {
-            try {
-                favoriteService.removeFavorite(username, completedSteps.get(i));
-            } catch (RuntimeException compensationFailure) {
-                logger.error("Failed to compensate favorite saga for user {} and player {}",
-                        username, completedSteps.get(i), compensationFailure);
-                failure.addSuppressed(compensationFailure);
-            }
-        }
+    @Transactional(readOnly = true)
+    public FavoriteSagaResponse getStatus(String username, UUID sagaId) {
+        FavoriteSaga saga = sagaRepository.findByIdAndUsername(sagaId.toString(), username)
+                .orElseThrow(() -> new ResourceNotFoundException("Favorite saga not found."));
+        return toResponse(saga);
+    }
+
+    private FavoriteSagaResponse toResponse(FavoriteSaga saga) {
+        return new FavoriteSagaResponse(
+                UUID.fromString(saga.getId()),
+                saga.getStatus(),
+                saga.getFailureMessage()
+        );
     }
 }
