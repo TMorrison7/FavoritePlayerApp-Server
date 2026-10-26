@@ -27,5 +27,6 @@ public abstract class Team {
     @Column(name = "color")
     private List<String> colors;
     private String division;
+    private String level;
 
 }

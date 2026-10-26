@@ -1,9 +1,9 @@
 package app.service;
 
 
-import app.dto.playerdto.request.BasketballRequest;
-import app.dto.playerdto.request.FootballRequest;
-import app.dto.playerdto.request.PlayerRequest;
+import app.dto.playerdto.BasketballRequest;
+import app.dto.playerdto.FootballRequest;
+import app.dto.playerdto.PlayerRequest;
 import app.exception.ResourceNotFoundException;
 import app.models.abstractEntities.Player;
 import app.models.entities.BasketballPlayer;
@@ -62,7 +62,6 @@ public class PlayerService {
                     .birthCity(footballDto.getBirthCity())
                     .team(footballDto.getTeam())
                     .highSchool(footballDto.getHighSchool())
-                    .college(footballDto.getCollege())
                     .sport(footballDto.getClass().getAnnotation(JsonTypeName.class).value())
                     .build();
         } else if (request instanceof BasketballRequest basketballDto){
@@ -74,7 +73,6 @@ public class PlayerService {
                     .birthCity(basketballDto.getBirthCity())
                     .team(basketballDto.getTeam())
                     .highSchool(basketballDto.getHighSchool())
-                    .college(basketballDto.getCollege())
                     .sport(basketballDto.getClass().getAnnotation(JsonTypeName.class).value())
                     .build();
         } else {
@@ -94,7 +92,6 @@ public class PlayerService {
         filters.put("birthCity", request.getBirthCity());
         filters.put("team", request.getTeam());
         filters.put("highSchool", request.getHighSchool());
-        filters.put("college", request.getCollege());
         filters.put("sport", request.getClass().getAnnotation(JsonTypeName.class).value());
 
         Specification<Player> spec = (root, query, cb) -> cb.and(
@@ -123,12 +120,12 @@ public class PlayerService {
     })
     public Player updateFull(Long id, PlayerRequest request){
 
-        Player existingPlayer = playerRepository.findById(id)
+        Player currentPlayer = playerRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Player not found"));
 
         try {
             // 2. Jackson automatically merges the request fields directly into the correct concrete class
-            return playerRepository.save(mapper.updateValue(existingPlayer, request));
+            return playerRepository.save(mapper.updateValue(currentPlayer, request));
         } catch (JsonMappingException e) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid update data", e);
         }
