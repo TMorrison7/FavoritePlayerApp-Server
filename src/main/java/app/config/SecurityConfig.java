@@ -48,10 +48,10 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/**").permitAll()
-                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
-                        .requestMatchers("/api/user/**").hasAnyRole("USER", "ADMIN")
-                        .anyRequest().authenticated()
+                        .requestMatchers("/api/admin/**").hasAuthority("Role_ADMIN")
+                        .requestMatchers("/api/user/**").hasAnyAuthority("Role_USER", "Role_ADMIN")
+                        .requestMatchers("/register", "/login").permitAll()
+                        .anyRequest().permitAll()
                 ).oauth2ResourceServer(oauth -> oauth
                         .jwt( jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter()))
                 );
