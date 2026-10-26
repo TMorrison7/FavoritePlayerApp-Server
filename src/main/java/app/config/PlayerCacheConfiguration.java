@@ -1,6 +1,6 @@
 package app.config;
 
-import app.dto.playerdto.request.PlayerRequest;
+import app.dto.playerdto.PlayerRequest;
 import app.models.abstractEntities.Team;
 import app.models.entities.College;
 import com.github.benmanes.caffeine.cache.Caffeine;
@@ -20,7 +20,8 @@ public class PlayerCacheConfiguration {
 
     @Bean
     public CacheManager cacheManager() {
-        CaffeineCacheManager cacheManager = new CaffeineCacheManager("players", "playerSearch");
+        CaffeineCacheManager cacheManager = new CaffeineCacheManager(
+                "players", "playerSearch", "teams");
         cacheManager.setCaffeine(Caffeine.newBuilder()
                 .maximumSize(1_000)
                 .expireAfterWrite(Duration.ofMinutes(10)));

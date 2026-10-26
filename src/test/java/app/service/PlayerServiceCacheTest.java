@@ -1,7 +1,7 @@
 package app.service;
 
 import app.config.PlayerCacheConfiguration;
-import app.dto.playerdto.request.BasketballRequest;
+import app.dto.playerdto.BasketballRequest;
 import app.models.abstractEntities.Player;
 import app.repositories.PlayerRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;

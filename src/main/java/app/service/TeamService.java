@@ -14,6 +14,8 @@ import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
 import jakarta.validation.Validator;
 import lombok.AllArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -32,6 +34,7 @@ public class TeamService {
     private final Validator validator;
     private final ObjectMapper mapper = new ObjectMapper();
 
+    @CacheEvict(cacheNames = "teams", allEntries = true)
     public Team create(TeamRequest request){
         Team team;
 
@@ -67,6 +70,7 @@ public class TeamService {
         return teamRepository.save(team);
     }
 
+    @Cacheable(cacheNames = "teams", key = "#request")
     public List<Team> search(TeamRequest request){
         Map<String, Object> filters = new HashMap<>();
         filters.put("name", request.getName());
@@ -84,15 +88,18 @@ public class TeamService {
         return teamRepository.findAll(spec);
     }
 
+    @Cacheable(cacheNames = "teams", key = "'all'")
     public List<Team> getAllTeams(){
         return teamRepository.findAll();
     }
 
+    @Cacheable(cacheNames = "teams", key = "#id")
     public Team getTeamById(long id){
         return teamRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException(String.format("Team with ID: %d not found.", id)));
     }
 
+    @CacheEvict(cacheNames = "teams", allEntries = true)
     public Team updateFull(Long id, TeamRequest request){
 
         Team currentTeam = teamRepository.findById(id)
@@ -105,6 +112,7 @@ public class TeamService {
         }
     }
 
+    @CacheEvict(cacheNames = "teams", allEntries = true)
     public Team updatePartial(Long id, TeamRequest request){
         Team currentTeam = teamRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Team not found"));
@@ -116,6 +124,7 @@ public class TeamService {
         }
     }
 
+    @CacheEvict(cacheNames = "teams", allEntries = true)
     public void delete(Long id){
         if(!teamRepository.existsById(id)){
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Request not found");
