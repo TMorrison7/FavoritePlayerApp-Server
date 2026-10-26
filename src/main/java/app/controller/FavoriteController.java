@@ -1,17 +1,19 @@
 package app.controller;
 
 import app.dto.userdto.FavoritePlayersRequest;
+import app.dto.userdto.FavoriteSagaResponse;
 import app.models.abstractEntities.Player;
 import app.service.FavoriteSagaService;
 import app.service.FavoriteService;
 import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
 import org.springframework.security.core.Authentication;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/user/favorites")
@@ -22,11 +24,22 @@ public class FavoriteController {
     private final FavoriteService favoriteService;
 
     @PostMapping
-    public ResponseEntity<List<Player>> addFavorites(
+    public ResponseEntity<FavoriteSagaResponse> addFavorites(
             Authentication authentication,
+            HttpServletRequest servletRequest,
             @Valid @RequestBody FavoritePlayersRequest request) {
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body(favoriteSagaService.addFavorites(authentication.getName(), request.playerIds()));
+        FavoriteSagaResponse saga = favoriteSagaService.start(authentication.getName(), request.playerIds());
+        return ResponseEntity.accepted()
+                .header("Location", servletRequest.getContextPath()
+                        + "/api/user/favorites/sagas/" + saga.sagaId())
+                .body(saga);
+    }
+
+    @GetMapping("/sagas/{sagaId}")
+    public ResponseEntity<FavoriteSagaResponse> getSagaStatus(
+            Authentication authentication,
+            @PathVariable UUID sagaId) {
+        return ResponseEntity.ok(favoriteSagaService.getStatus(authentication.getName(), sagaId));
     }
 
     @GetMapping
