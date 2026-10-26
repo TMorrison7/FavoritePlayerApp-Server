@@ -1,7 +1,7 @@
 package app.models;
 
-import app.dto.teamdto.TeamRequestDto;
-import app.dto.teamdto.CollegeTeamRequestDto;
+import app.dto.teamdto.TeamRequest;
+import app.dto.teamdto.CollegeTeamRequest;
 import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
 import jakarta.persistence.ElementCollection;
@@ -66,10 +66,10 @@ public class TeamSaga {
     @Column(nullable = false, updatable = false)
     private Instant createdAt;
 
-    public TeamSaga(TeamRequestDto request, List<Long> playerIds) {
+    public TeamSaga(TeamRequest request, List<Long> playerIds) {
         this.id = UUID.randomUUID().toString();
         this.status = TeamSagaStatus.PENDING;
-        this.teamType = request instanceof CollegeTeamRequestDto ? "COLLEGE" : "PRO";
+        this.teamType = request instanceof CollegeTeamRequest ? "COLLEGE" : "PRO";
         this.teamName = request.getName();
         this.city = request.getCity();
         this.state = request.getState();

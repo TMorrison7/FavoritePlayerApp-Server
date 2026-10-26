@@ -151,8 +151,14 @@ class TeamSagaStepServiceTest {
     }
 
     private TeamSaga saga(String type) {
+        app.dto.teamdto.ProTeamRequest request = new app.dto.teamdto.ProTeamRequest();
+        request.setName("Example");
+        request.setCity("City");
+        request.setState("State");
+        request.setColors(List.of("blue"));
+        request.setDivision("Division");
         TeamSaga saga = new TeamSaga(
-                new app.dto.teamdto.ProTeamRequestDto("Example", "City", "State", List.of("blue"), "Division"),
+                request,
                 List.of(10L));
         saga.setTeamType(type);
         saga.setStatus(TeamSagaStatus.PROCESSING);

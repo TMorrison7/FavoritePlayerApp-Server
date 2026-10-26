@@ -7,7 +7,7 @@ import jakarta.validation.constraints.NotNull;
 import java.util.List;
 
 public record TeamCreationSagaRequest(
-        @Valid @NotNull TeamRequestDto team,
+        @Valid @NotNull TeamRequest team,
         @NotEmpty List<@NotNull Long> playerIds
 ) {
 }

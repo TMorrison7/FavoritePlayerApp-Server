@@ -1,6 +1,6 @@
 package app.controller;
 
-import app.dto.teamdto.ProTeamRequestDto;
+import app.dto.teamdto.ProTeamRequest;
 import app.dto.teamdto.TeamCreationSagaRequest;
 import app.dto.teamdto.TeamSagaResponse;
 import app.models.TeamSagaStatus;
@@ -38,7 +38,7 @@ class TeamControllerTest {
     @Test
     void createsTeamSagaAndReturnsAcceptedStatusLocation() {
         TeamCreationSagaRequest request = new TeamCreationSagaRequest(
-                new ProTeamRequestDto("Example", "City", "State", List.of("blue"), "Division"),
+                proTeamRequest("Example", "City", "State", List.of("blue"), "Division"),
                 List.of(10L));
         TeamSagaResponse saga = new TeamSagaResponse(
                 UUID.randomUUID(), TeamSagaStatus.PENDING, null, null);
@@ -69,12 +69,23 @@ class TeamControllerTest {
     @Test
     void preservesSynchronousTeamCreationEndpoint() {
         Team team = mock(Team.class);
-        ProTeamRequestDto request = new ProTeamRequestDto("Example", "City", "State", List.of(), "Division");
-        when(teamService.createTeam(request)).thenReturn(team);
+        ProTeamRequest request = proTeamRequest("Example", "City", "State", List.of(), "Division");
+        when(teamService.create(request)).thenReturn(team);
 
-        var response = controller.createTeam(request);
+        var response = controller.create(request);
 
         assertEquals(HttpStatus.CREATED, response.getStatusCode());
         assertSame(team, response.getBody());
+    }
+
+    private ProTeamRequest proTeamRequest(
+            String name, String city, String state, List<String> colors, String division) {
+        ProTeamRequest request = new ProTeamRequest();
+        request.setName(name);
+        request.setCity(city);
+        request.setState(state);
+        request.setColors(colors);
+        request.setDivision(division);
+        return request;
     }
 }

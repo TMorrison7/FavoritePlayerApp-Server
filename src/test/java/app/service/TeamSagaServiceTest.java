@@ -1,6 +1,6 @@
 package app.service;
 
-import app.dto.teamdto.ProTeamRequestDto;
+import app.dto.teamdto.ProTeamRequest;
 import app.dto.teamdto.TeamCreationSagaRequest;
 import app.dto.teamdto.TeamSagaResponse;
 import app.dto.teamdto.TeamSagaStartedEvent;
@@ -46,7 +46,7 @@ class TeamSagaServiceTest {
     @Test
     void persistsTeamSagaAndOutboxEventWithUniquePlayerIds() throws Exception {
         TeamCreationSagaRequest request = new TeamCreationSagaRequest(
-                new ProTeamRequestDto("Warriors", "San Francisco", "CA", List.of("blue"), "NBA"),
+                proTeamRequest("Warriors", "San Francisco", "CA", List.of("blue"), "NBA"),
                 List.of(10L, 10L, 20L));
         Player firstPlayer = player(10L);
         Player secondPlayer = player(20L);
@@ -76,7 +76,7 @@ class TeamSagaServiceTest {
         Player firstPlayer = player(10L);
         when(playerRepository.findAllById(List.of(10L, 20L))).thenReturn(List.of(firstPlayer));
         TeamCreationSagaRequest request = new TeamCreationSagaRequest(
-                new ProTeamRequestDto("Warriors", null, null, List.of(), "NBA"),
+                proTeamRequest("Warriors", null, null, List.of(), "NBA"),
                 List.of(10L, 20L));
 
         assertThrows(ResourceNotFoundException.class, () -> service.start(request));
@@ -88,7 +88,7 @@ class TeamSagaServiceTest {
     void returnsPersistedStatusAndTeamId() {
         UUID id = UUID.randomUUID();
         TeamSaga saga = new TeamSaga(
-                new ProTeamRequestDto("Warriors", null, null, List.of(), "NBA"), List.of(10L));
+                proTeamRequest("Warriors", null, null, List.of(), "NBA"), List.of(10L));
         saga.setId(id.toString());
         saga.setStatus(TeamSagaStatus.COMPLETED);
         saga.setTeamId(55L);
@@ -105,5 +105,15 @@ class TeamSagaServiceTest {
         Player player = mock(Player.class);
         when(player.getId()).thenReturn(id);
         return player;
+    }
+
+    private ProTeamRequest proTeamRequest(String name, String city, String state, List<String> colors, String division) {
+        ProTeamRequest request = new ProTeamRequest();
+        request.setName(name);
+        request.setCity(city);
+        request.setState(state);
+        request.setColors(colors);
+        request.setDivision(division);
+        return request;
     }
 }
