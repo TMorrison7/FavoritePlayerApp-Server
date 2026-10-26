@@ -1,10 +1,9 @@
 package app.config;
 
-import com.nimbusds.jose.jwk.JWKSet;
-import com.nimbusds.jose.jwk.RSAKey;
-import com.nimbusds.jose.jwk.source.ImmutableJWKSet;
+import com.nimbusds.jose.jwk.source.ImmutableSecret;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
@@ -17,29 +16,28 @@ import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.JwtEncoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
+import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
 import org.springframework.security.web.SecurityFilterChain;
 
-import java.security.KeyPair;
-import java.security.KeyPairGenerator;
-import java.security.interfaces.RSAPrivateKey;
-import java.security.interfaces.RSAPublicKey;
+import javax.crypto.SecretKey;
+import javax.crypto.spec.SecretKeySpec;
+import java.nio.charset.StandardCharsets;
 
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
 public class SecurityConfig {
 
-    private final RSAPublicKey publicKey;
-    private final RSAPrivateKey privateKey;
+    private final SecretKey secretKey;
 
-    public SecurityConfig() throws Exception {
-        KeyPairGenerator keyPairGenerator = KeyPairGenerator.getInstance("RSA");
-        keyPairGenerator.initialize(2048);
-        KeyPair keyPair = keyPairGenerator.generateKeyPair();
-        this.publicKey = (RSAPublicKey) keyPair.getPublic();
-        this.privateKey = (RSAPrivateKey) keyPair.getPrivate();
+    public SecurityConfig(@Value("${app.security.jwt.secret}") String jwtSecret) {
+        byte[] secretBytes = jwtSecret.getBytes(StandardCharsets.UTF_8);
+        if (secretBytes.length < 32) {
+            throw new IllegalArgumentException("app.security.jwt.secret must be at least 32 bytes.");
+        }
+        this.secretKey = new SecretKeySpec(secretBytes, "HmacSHA256");
     }
 
     @Bean
@@ -48,9 +46,9 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/**").permitAll()
-                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
-                        .requestMatchers("/api/user/**").hasAnyRole("USER", "ADMIN")
+                        .requestMatchers("/register", "/login").permitAll()
+                        .requestMatchers("/api/admin/**").hasAuthority("Role_ADMIN")
+                        .requestMatchers("/api/user/**").hasAnyAuthority("Role_USER", "Role_ADMIN")
                         .anyRequest().authenticated()
                 ).oauth2ResourceServer(oauth -> oauth
                         .jwt( jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter()))
@@ -70,13 +68,14 @@ public class SecurityConfig {
 
     @Bean
     public JwtDecoder jwtDecoder(){
-        return NimbusJwtDecoder.withPublicKey(this.publicKey).build();
+        return NimbusJwtDecoder.withSecretKey(secretKey)
+                .macAlgorithm(MacAlgorithm.HS256)
+                .build();
     }
 
     @Bean
     public JwtEncoder jwtEncoder(){
-        RSAKey rsaKey = new RSAKey.Builder(this.publicKey).privateKey(this.privateKey).build();
-        return new NimbusJwtEncoder(new ImmutableJWKSet<>(new JWKSet(rsaKey)));
+        return new NimbusJwtEncoder(new ImmutableSecret<>(secretKey));
     }
 
     @Bean
