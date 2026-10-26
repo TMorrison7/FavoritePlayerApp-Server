@@ -18,6 +18,9 @@ import jakarta.validation.Validator;
 import lombok.AllArgsConstructor;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -37,6 +40,10 @@ public class PlayerService {
 
 
 
+    @Caching(evict = {
+            @CacheEvict(cacheNames = "players", allEntries = true),
+            @CacheEvict(cacheNames = "playerSearch", allEntries = true)
+    })
     public Player create(PlayerRequest request){
 
         Player player;
@@ -75,6 +82,7 @@ public class PlayerService {
         return playerRepository.save(player);
     }
 
+    @Cacheable(cacheNames = "playerSearch", keyGenerator = "playerSearchKeyGenerator")
     public List<Player> search(PlayerRequest request) {
         Map<String, Object> filters = new HashMap<>();
         filters.put("firstName", request.getFirstName());
@@ -95,15 +103,21 @@ public class PlayerService {
         return playerRepository.findAll(spec);
     }
     
+    @Cacheable(cacheNames = "players", key = "'all'")
     public List<Player> getAllPlayers(){
         return playerRepository.findAll();
     }
 
+    @Cacheable(cacheNames = "players", key = "#id")
     public Player getPlayerById(Long id){
         return playerRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException(String.format("Player with ID: %d not found.", id)));
     }
 
+    @Caching(evict = {
+            @CacheEvict(cacheNames = "players", allEntries = true),
+            @CacheEvict(cacheNames = "playerSearch", allEntries = true)
+    })
     public Player updateFull(Long id, PlayerRequest request){
 
         Player currentPlayer = playerRepository.findById(id)
@@ -117,6 +131,10 @@ public class PlayerService {
         }
     }
 
+    @Caching(evict = {
+            @CacheEvict(cacheNames = "players", allEntries = true),
+            @CacheEvict(cacheNames = "playerSearch", allEntries = true)
+    })
     public Player updatePartial(Long id, PlayerRequest request){
         Player currentPlayer = playerRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Player not found"));
@@ -127,6 +145,10 @@ public class PlayerService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Update failed", e);
         }
     }
+    @Caching(evict = {
+            @CacheEvict(cacheNames = "players", allEntries = true),
+            @CacheEvict(cacheNames = "playerSearch", allEntries = true)
+    })
     public void delete(Long id){
         if(!playerRepository.existsById(id)) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Request not found");
