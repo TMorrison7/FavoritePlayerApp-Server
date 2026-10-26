@@ -4,6 +4,7 @@ package app.dto.teamdto;
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import jakarta.validation.constraints.NotBlank;
+import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
@@ -13,25 +14,26 @@ import java.util.List;
 @JsonTypeInfo(
         use = JsonTypeInfo.Id.NAME,
         include = JsonTypeInfo.As.PROPERTY,
-        property = "level"
-
+        property = "level",
+        visible = true
 )
 @JsonSubTypes({
-        @JsonSubTypes.Type(value = ProTeamRequestDto.class, name = "proTeam"),
-        @JsonSubTypes.Type(value = CollegeTeamRequestDto.class, name = "collegeTeam")
+        @JsonSubTypes.Type(value = ProTeamRequest.class, name = "ProTeam"),
+        @JsonSubTypes.Type(value = CollegeTeamRequest.class, name = "CollegeTeam")
 })
 
 
-@Getter
+@Data
 @RequiredArgsConstructor
 @EqualsAndHashCode
-public sealed abstract class TeamRequestDto permits ProTeamRequestDto, CollegeTeamRequestDto {
+public sealed abstract class TeamRequest permits ProTeamRequest, CollegeTeamRequest {
 
+    private Long id;
     @NotBlank(message = "Team name is required")
-    private final String name;
-    private final String city;
-    private final String state;
-    private final List<String> colors;
-    private final String division;
+    private String name;
+    private String city;
+    private String state;
+    private List<String> colors;
+    private String division;
 
 }

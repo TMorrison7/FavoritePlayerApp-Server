@@ -1,7 +1,7 @@
 package app.controller;
 
 
-import app.dto.playerdto.request.PlayerRequest;
+import app.dto.playerdto.PlayerRequest;
 import app.models.abstractEntities.Player;
 import app.service.PlayerService;
 import jakarta.validation.Valid;
@@ -26,12 +26,12 @@ public class PlayerController {
     }
     @PostMapping("/search")
     public ResponseEntity<List<Player>> search(@RequestBody PlayerRequest request){
-        List<Player> players = this.playerService.search(request);
+        List<Player> players = playerService.search(request);
         return ResponseEntity.ok(players);
     }
     @GetMapping
     public ResponseEntity<List<Player>> getAll(){
-        List<Player> players = this.playerService.getAllPlayers();
+        List<Player> players = playerService.getAllPlayers();
         return ResponseEntity.ok(players);
     }
     @GetMapping("/{id}")

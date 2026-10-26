@@ -19,7 +19,6 @@ public abstract class Player {
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE)
     private long id;
-
     @Column(nullable = false)
     private String firstName;
     @Column(nullable = false)
@@ -31,9 +30,6 @@ public abstract class Player {
     @JoinColumn(name = "team_id")
     private Team team;
     private String highSchool;
-    @ManyToOne
-    @JoinColumn(name = "college_id")
-    private College college;
     @Column(name = "sport", insertable = false, updatable = false)
     private String sport;
 }

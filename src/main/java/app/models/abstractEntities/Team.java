@@ -24,5 +24,6 @@ public abstract class Team {
     private String state;
     private List<String> colors;
     private String division;
+    private String level;
 
 }
