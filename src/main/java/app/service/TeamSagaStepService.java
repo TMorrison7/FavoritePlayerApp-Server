@@ -13,6 +13,8 @@ import app.repositories.TeamRepository;
 import app.repositories.TeamSagaPlayerStepRepository;
 import app.repositories.TeamSagaRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -37,6 +39,7 @@ public class TeamSagaStepService {
     }
 
     @Transactional
+    @CacheEvict(cacheNames = "teams", allEntries = true)
     public Long createTeam(String sagaId) {
         TeamSaga saga = getSaga(sagaId);
         if (saga.getStatus() != TeamSagaStatus.PROCESSING) {
@@ -70,6 +73,11 @@ public class TeamSagaStepService {
     }
 
     @Transactional
+    @Caching(evict = {
+            @CacheEvict(cacheNames = "teams", allEntries = true),
+            @CacheEvict(cacheNames = "players", allEntries = true),
+            @CacheEvict(cacheNames = "playerSearch", allEntries = true)
+    })
     public void assignPlayer(String sagaId, Long playerId) {
         TeamSaga saga = getSaga(sagaId);
         if (saga.getStatus() != TeamSagaStatus.PROCESSING
@@ -106,6 +114,11 @@ public class TeamSagaStepService {
     }
 
     @Transactional
+    @Caching(evict = {
+            @CacheEvict(cacheNames = "teams", allEntries = true),
+            @CacheEvict(cacheNames = "players", allEntries = true),
+            @CacheEvict(cacheNames = "playerSearch", allEntries = true)
+    })
     public Long compensateNextPlayer(String sagaId) {
         TeamSaga saga = getSaga(sagaId);
         if (saga.getStatus() != TeamSagaStatus.COMPENSATING) {
@@ -141,6 +154,7 @@ public class TeamSagaStepService {
     }
 
     @Transactional
+    @CacheEvict(cacheNames = "teams", allEntries = true)
     public void finishCompensation(String sagaId) {
         TeamSaga saga = getSaga(sagaId);
         if (saga.getStatus() != TeamSagaStatus.COMPENSATING

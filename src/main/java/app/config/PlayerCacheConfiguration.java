@@ -20,7 +20,8 @@ public class PlayerCacheConfiguration {
 
     @Bean
     public CacheManager cacheManager() {
-        CaffeineCacheManager cacheManager = new CaffeineCacheManager("players", "playerSearch");
+        CaffeineCacheManager cacheManager = new CaffeineCacheManager(
+                "players", "playerSearch", "teams");
         cacheManager.setCaffeine(Caffeine.newBuilder()
                 .maximumSize(1_000)
                 .expireAfterWrite(Duration.ofMinutes(10)));

@@ -13,6 +13,8 @@ import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
 import jakarta.validation.Validator;
 import lombok.AllArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -26,6 +28,7 @@ public class TeamService {
     private final Validator validator;
 
 
+    @CacheEvict(cacheNames = "teams", allEntries = true)
     public Team createTeam(TeamRequestDto teamRequestDto){
         Team team;
 
@@ -59,15 +62,18 @@ public class TeamService {
         return teamRepository.save(team);
     }
 
+    @Cacheable(cacheNames = "teams", key = "'all'")
     public List<Team> getAllTeams(){
         return teamRepository.findAll();
     }
 
+    @Cacheable(cacheNames = "teams", key = "#id")
     public Team getTeamById(long id){
         return teamRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException(String.format("Team with ID: %d not found.", id)));
     }
 
+    @Cacheable(cacheNames = "teams", key = "'name:' + #name")
     public Team getTeamByName(String name){
         return teamRepository.getTeamByName(name)
                 .orElseThrow(() -> new ResourceNotFoundException(String.format("Team with name: %s not found", name)));
