@@ -6,6 +6,7 @@ import app.dto.teamdto.ProTeamRequestDto;
 import app.dto.teamdto.TeamRequestDto;
 import app.exception.ResourceNotFoundException;
 import app.models.abstractEntities.Team;
+import app.models.entities.College;
 import app.models.entities.ProTeam;
 import app.repositories.TeamRepository;
 import jakarta.validation.ConstraintViolation;
@@ -38,7 +39,7 @@ public class TeamService {
                     .build();
         }
         else if(teamRequestDto instanceof CollegeTeamRequestDto collegeTeamRequestDto){
-            team = ProTeam.builder()
+            team = College.builder()
                     .name(collegeTeamRequestDto.getName())
                     .city(collegeTeamRequestDto.getCity())
                     .state(collegeTeamRequestDto.getState())
