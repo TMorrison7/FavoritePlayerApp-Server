@@ -1,4 +1,4 @@
-package app.dto.playerdto.request;
+package app.dto.playerdto;
 
 import app.models.abstractEntities.Team;
 import app.models.entities.College;
@@ -19,8 +19,8 @@ import java.time.LocalDate;
         visible = true
 )
 @JsonSubTypes({
-        @JsonSubTypes.Type(value = BasketballRequest.class, name = "BASKETBALL"),
-        @JsonSubTypes.Type(value = FootballRequest.class, name = "FOOTBALL")
+        @JsonSubTypes.Type(value = BasketballRequest.class, name = "Basketball"),
+        @JsonSubTypes.Type(value = FootballRequest.class, name = "Football")
 })
 
 @Data
