@@ -20,16 +20,16 @@ The local-only MySQL password is `practice-only`; do not reuse it outside this e
 
 Create a couple of players:
 
-```shell
-curl -X POST http://localhost:8082/players -H "Content-Type: application/json" -d "{\"firstName\":\"Maya\",\"lastName\":\"Moore\",\"sport\":\"Basketball\"}"
-curl -X POST http://localhost:8082/players -H "Content-Type: application/json" -d "{\"firstName\":\"Jordan\",\"lastName\":\"Lee\",\"sport\":\"Football\"}"
-curl http://localhost:8082/players
+```powershell
+curl.exe -X POST http://localhost:8082/players -H "Content-Type: application/json" -d '{"firstName":"Maya","lastName":"Moore","sport":"Basketball"}'
+curl.exe -X POST http://localhost:8082/players -H "Content-Type: application/json" -d '{"firstName":"Jordan","lastName":"Lee","sport":"Football"}'
+curl.exe http://localhost:8082/players
 ```
 
 Use the returned player IDs to start the Saga:
 
-```shell
-curl -X POST http://localhost:8080/sagas/team-assignments -H "Content-Type: application/json" -d "{\"team\":{\"name\":\"Example City\",\"city\":\"Example City\",\"state\":\"CA\",\"division\":\"Practice\",\"colors\":[\"blue\",\"gold\"],\"teamType\":\"PRO\"},\"playerIds\":[1,2]}"
+```powershell
+curl.exe -X POST http://localhost:8080/sagas/team-assignments -H "Content-Type: application/json" -d '{"team":{"name":"Example City","city":"Example City","state":"CA","division":"Practice","colors":["blue","gold"],"teamType":"PRO"},"playerIds":[1,2]}'
 ```
 
 The response includes the saga ID, status, and created team ID. Check it with `GET /sagas/team-assignments/{sagaId}`; check player assignments with `GET http://localhost:8082/players`.
