@@ -5,6 +5,7 @@ import app.models.abstractEntities.Player;
 import app.models.entities.FootballPlayer;
 import app.repositories.PlayerRepository;
 import app.service.PlayerService;
+import app.service.OutboxEventService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -19,6 +20,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 @ExtendWith(MockitoExtension.class)
 public class PlayerServiceTest {
     @Mock private PlayerRepository playerRepository;
+    @Mock private OutboxEventService outboxEventService;
     @InjectMocks private PlayerService playerService;
 
     @Test
