@@ -1,0 +1,78 @@
+services:
+  mysql:
+    image: mysql:8.4
+    environment:
+      MYSQL_ROOT_PASSWORD: practice-only
+    ports:
+      - "3307:3306"
+    volumes:
+      - ./mysql/init:/docker-entrypoint-initdb.d:ro
+      - saga-mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-ppractice-only"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  team-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        SERVICE_MODULE: team-service
+        SERVICE_ARTIFACT: team-service
+    environment:
+      SERVER_PORT: 8081
+      TEAM_DB_URL: jdbc:mysql://mysql:3306/saga_teams
+      DB_USERNAME: root
+      DB_PASSWORD: practice-only
+    ports:
+      - "8081:8081"
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+  player-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        SERVICE_MODULE: player-service
+        SERVICE_ARTIFACT: player-service
+    environment:
+      SERVER_PORT: 8082
+      PLAYER_DB_URL: jdbc:mysql://mysql:3306/saga_players
+      DB_USERNAME: root
+      DB_PASSWORD: practice-only
+    ports:
+      - "8082:8082"
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+  orchestrator-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        SERVICE_MODULE: orchestrator-service
+        SERVICE_ARTIFACT: orchestrator-service
+    environment:
+      SERVER_PORT: 8080
+      SAGA_DB_URL: jdbc:mysql://mysql:3306/saga_orchestrator
+      DB_USERNAME: root
+      DB_PASSWORD: practice-only
+      TEAM_SERVICE_URL: http://team-service:8081
+      PLAYER_SERVICE_URL: http://player-service:8082
+    ports:
+      - "8080:8080"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      team-service:
+        condition: service_started
+      player-service:
+        condition: service_started
+
+volumes:
+  saga-mysql-data:
