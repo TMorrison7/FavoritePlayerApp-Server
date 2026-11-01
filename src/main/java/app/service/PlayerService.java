@@ -4,6 +4,7 @@ package app.service;
 import app.dto.playerdto.BasketballRequest;
 import app.dto.playerdto.FootballRequest;
 import app.dto.playerdto.PlayerRequest;
+import app.dto.events.PlayerCreatedEvent;
 import app.exception.ResourceNotFoundException;
 import app.models.abstractEntities.Player;
 import app.models.entities.BasketballPlayer;
@@ -15,10 +16,12 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
 import jakarta.validation.Validator;
-import lombok.AllArgsConstructor;
+import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.HashMap;
@@ -27,16 +30,21 @@ import java.util.Map;
 import java.util.Set;
 
 @Service
-@AllArgsConstructor
+@RequiredArgsConstructor
 public class PlayerService {
 
 
     private final PlayerRepository playerRepository;
     private final Validator validator;
+    private final OutboxEventService outboxEventService;
+
+    @Value("${app.kafka.player-created-topic}")
+    private String playerCreatedTopic;
     private final ObjectMapper mapper = new ObjectMapper();
 
 
 
+    @Transactional
     public Player create(PlayerRequest request){
 
         Player player;
@@ -72,7 +80,17 @@ public class PlayerService {
             throw new IllegalArgumentException("Unknown player type");
         }
 
-        return playerRepository.save(player);
+        Player savedPlayer = playerRepository.save(player);
+        outboxEventService.enqueue(
+                playerCreatedTopic,
+                Long.toString(savedPlayer.getId()),
+                new PlayerCreatedEvent(
+                        savedPlayer.getId(),
+                        savedPlayer.getFirstName(),
+                        savedPlayer.getLastName(),
+                        savedPlayer.getSport(),
+                        savedPlayer.getTeam() == null ? null : savedPlayer.getTeam().getId()));
+        return savedPlayer;
     }
 
     public List<Player> search(PlayerRequest request) {
